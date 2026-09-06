@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>數線大冒險：倍數切球挑戰</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            text-align: center;
+            background-color: #f5f5f5;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+        h1 { color: #d81b60; margin-top: 5px; }
+        .control-panel {
+            margin: 8px auto;
+            font-size: 16px;
+        }
+        input, button {
+            font-size: 15px;
+            padding: 6px 10px;
+            margin: 0 5px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            color: #333;
+        }
+        button {
+            background-color: #e91e63;
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+        }
+        button:hover { background-color: #c2185b; }
+        
+        /* 遊戲畫布容器 */
+        .game-container {
+            position: relative;
+            margin: 10px auto;
+            width: 90%;
+            max-width: 950px;
+            height: 450px;
+            background: linear-gradient(to bottom, #ffffff 0%, #e0f7fa 100%);
+            border-radius: 12px;
+            border: 3px solid #b2ebf2;
+            overflow: hidden;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            cursor: crosshair;
+            transition: background 0.5s ease;
+        }
+
+        /* Bonus Time 淡黃色背景特效 */
+        .game-container.bonus-mode {
+            background: linear-gradient(to bottom, #fffde7 0%, #fff9c4 100%) !important;
+            border-color: #fbc02d !important;
+        }
+
+        /* 畫面中央跳出超大 Bonus Time 提示特效 */
+        .bonus-banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 56px;
+            font-weight: 900;
+            color: #f57f17;
+            text-shadow: 3px 3px 0px #fff, 0 0 25px rgba(245, 127, 23, 0.6);
+            z-index: 80;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+            opacity: 0;
+        }
+        .bonus-banner.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        /* 切到加秒時背景跳出的超大中央特效 */
+        .time-popup-banner {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 68px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 0 10px #ff8f00, 0 0 20px #ff8f00, 0 0 30px #ff6f00, 3px 3px 6px rgba(0,0,0,0.6);
+            z-index: 85;
+            pointer-events: none;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+            opacity: 0;
+        }
+        .time-popup-banner.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        /* 畫面中央的覆蓋層（開始與結算） */
+        .start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .start-overlay h2 {
+            color: #880e4f;
+            font-size: 34px;
+            margin-bottom: 5px;
+        }
+        .start-overlay p {
+            color: #555;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        /* 結算時專用：超大得分顯示樣式 */
+        .final-score-box {
+            font-size: 52px;
+            font-weight: 900;
+            color: #e91e63;
+            background: #ffebee;
+            border: 3px dashed #ff8a80;
+            border-radius: 16px;
+            padding: 10px 30px;
+            margin: 10px 0 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(233,30,99,0.15);
+        }
+
+        .big-start-btn {
+            font-size: 26px;
+            padding: 12px 35px;
+            background-color: #00c853;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4);
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        .big-start-btn:hover {
+            background-color: #00e676;
+            transform: scale(1.05);
+        }
+
+        /* 數字球預設風格：灰色 */
+        .number-ball {
+            position: absolute;
+            width: 85px;
+            height: 85px;
+            background: radial-gradient(circle at 30% 30%, #b0bec5 0%, #546e7a 70%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 900;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+            box-shadow: 0 5px 15px rgba(84,110,122,0.4);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 碼表加秒道具球風格：金黃閃爍 */
+        .number-ball.time-ball {
+            background: radial-gradient(circle at 30% 30%, #ffd54f 0%, #ff8f00 70%);
+            box-shadow: 0 0 15px #ffa000;
+            font-size: 36px;
+        }
+        .number-ball.time-ball.sliced-time {
+            background: radial-gradient(circle, #ffeb3b 0%, #f57f17 70%);
+            box-shadow: 0 0 25px #ffeb3b;
+            transform: translate(-50%, -50%) scale(1.3) rotate(25deg);
+        }
+
+        /* 切對時的綠色樣貌 */
+        .number-ball.sliced-correct {
+            background: radial-gradient(circle, #00e676 0%, #00c853 70%);
+            box-shadow: 0 0 20px #00e676;
+            transform: translate(-50%, -50%) scale(1.3) rotate(25deg);
+        }
+
+        /* 切錯時的紅色樣貌 */
+        .number-ball.sliced-wrong {
+            background: radial-gradient(circle, #ff5252 0%, #c62828 70%);
+            box-shadow: 0 0 20px #ff5252;
+            transform: translate(-50%, -50%) scale(1.3) rotate(-25deg);
+        }
+
+        .info-panel {
+            font-size: 20px;
+            color: #880e4f;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .tip {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🗡️ 數線大冒險：倍數切球挑戰</h1>
+    
+    <div class="control-panel">
+        <label for="stepSize">目標倍數：</label>
+        <input type="number" id="stepSize" value="3" min="1" max="20" style="width: 50px;">
+        
+        <label for="minVal" style="margin-left: 10px;">數字區間：</label>
+        <input type="number" id="minVal" value="1" style="width: 50px;"> ~ 
+        <input type="number" id="maxVal" value="50" style="width: 50px;">
+
+        <label for="gameTime" style="margin-left: 10px;">遊戲時間(秒)：</label>
+        <input type="number" id="gameTime" value="60" min="15" max="300" style="width: 55px;">
+        
+        <button onclick="playSound('click'); showStartScreen();">重設設定</button>
+    </div>
+
+    <div class="game-container" id="gameContainer">
+        <div class="bonus-banner" id="bonusBanner">⚡ BONUS TIME! ⚡</div>
+        <div class="time-popup-banner" id="timePopupBanner">時間增加 +3秒 ⏱️</div>
+
+        <div class="start-overlay" id="startOverlay">
+            <h2 id="overlayTitle">🎯 準備好挑戰倍數切球了嗎？</h2>
+            <p id="overlayDesc">揮動你的刀刃，切出正確的倍數球與加秒道具！最後 10 秒進入 Bonus Time！</p>
+            <div id="overlayExtra"></div>
+            <button class="big-start-btn" id="overlayBtn" onclick="playSound('click'); startGame();">開始遊戲</button>
+        </div>
+
+        <canvas id="trailCanvas" width="950" height="450" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50;"></canvas>
+    </div>
+
+    <div class="info-panel">
+        分數：<span id="scoreText" style="color: #e91e63;">0</span> 分 ｜ 
+        剩餘時間：<span id="timeText" style="color: #00796b;">60</span> 秒 ｜ 
+        生命值：<span id="lifeText" style="color: #d32f2f;">❤️❤️❤️</span>
+    </div>
+    <div class="tip">💡 最後 10 秒 Bonus Time：球體大小隨機變化（巨型加分球 vs 靈活小球），刺激滿點！</div>
+
+    <script>
+        // --- Web Audio API 音效與背景音樂系統 ---
+        let audioCtx = null;
+        let bgmInterval = null;
+        let bgmStep = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 啟動動態背景音樂迴圈（調整頻率降低尖銳感，音色更圓潤）
+        function startBGM() {
+            stopBGM();
+            bgmStep = 0;
+            bgmInterval = setInterval(() => {
+                if (!isPlaying || !audioCtx) return;
+                
+                const now = audioCtx.currentTime;
+                const isBonus = (timeLeft <= 10 && timeLeft > 0);
+
+                if (isBonus) {
+                    // 【柔和且有張力的 Bonus 節奏 BGM】改用三角波與較低音階，避免刺耳
+                    const bonusNotes = [440, 523.25, 587.33, 659.25, 523.25, 440, 659.25, 783.99]; 
+                    const freq = bonusNotes[bgmStep % bonusNotes.length];
+                    
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle'; // 改用三角波，聲音溫潤不刺耳
+                    osc.frequency.setValueAtTime(freq, now);
+                    
+                    gain.gain.setValueAtTime(0.06, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+
+                    // 搭配柔和的低音節拍
+                    if (bgmStep % 2 === 0) {
+                        const bassOsc = audioCtx.createOscillator();
+                        const bassGain = audioCtx.createGain();
+                        bassOsc.type = 'sine';
+                        bassOsc.frequency.setValueAtTime(110, now);
+                        bassOsc.frequency.exponentialRampToValueAtTime(55, now + 0.1);
+                        
+                        bassGain.gain.setValueAtTime(0.08, now);
+                        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                        
+                        bassOsc.connect(bassGain);
+                        bassGain.connect(audioCtx.destination);
+                        bassOsc.start(now);
+                        bassOsc.stop(now + 0.1);
+                    }
+                } else {
+                    // 一般遊戲過程：輕鬆愉快的輕快旋律
+                    const normalNotes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63]; 
+                    const freq = normalNotes[bgmStep % normalNotes.length];
+                    
+                    if (bgmStep % 2 === 0) {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now);
+                        
+                        gain.gain.setValueAtTime(0.04, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.25);
+                    }
+                }
+                bgmStep++;
+            }, 125); 
+        }
+
+        function stopBGM() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'correct') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, now); 
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); 
+                    
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } 
+                else if (type === 'wrong') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+                    
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } 
+                else if (type === 'timeball') {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, index) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + index * 0.06);
+                        
+                        gain.gain.setValueAtTime(0.12, now + index * 0.06);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + index * 0.06 + 0.1);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + index * 0.06);
+                        osc.stop(now + index * 0.06 + 0.1);
+                    });
+                } 
+                else if (type === 'bonus') {
+                    [330, 440, 523, 659].forEach((freq, index) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + index * 0.08);
+                        
+                        gain.gain.setValueAtTime(0.15, now + index * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + index * 0.08 + 0.12);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + index * 0.08);
+                        osc.stop(now + index * 0.08 + 0.12);
+                    });
+                }
+                else if (type === 'countdown') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(659.25, now);
+                    osc.frequency.exponentialRampToValueAtTime(329.63, now + 0.1);
+                    
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                }
+                else if (type === 'gameover') {
+                    // 【遊戲結束結算音效】低沉而具有儀式感的下降和弦
+                    [440, 349.23, 261.63, 196.00].forEach((freq, index) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, now + index * 0.15);
+                        
+                        gain.gain.setValueAtTime(0.15, now + index * 0.15);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.15 + 0.3);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + index * 0.15);
+                        osc.stop(now + index * 0.15 + 0.3);
+                    });
+                }
+                else if (type === 'click') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+                    
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                }
+            } catch (e) {}
+        }
+
+        const gameContainer = document.getElementById('gameContainer');
+        const bonusBanner = document.getElementById('bonusBanner');
+        const timePopupBanner = document.getElementById('timePopupBanner');
+        const startOverlay = document.getElementById('startOverlay');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlayDesc = document.getElementById('overlayDesc');
+        const overlayExtra = document.getElementById('overlayExtra');
+        const overlayBtn = document.getElementById('overlayBtn');
+        
+        const stepInput = document.getElementById('stepSize');
+        const minInput = document.getElementById('minVal');
+        const maxInput = document.getElementById('maxVal');
+        const timeInput = document.getElementById('gameTime');
+        
+        const scoreText = document.getElementById('scoreText');
+        const timeText = document.getElementById('timeText');
+        const lifeText = document.getElementById('lifeText');
+        const canvas = document.getElementById('trailCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let isPlaying = false;
+        let score = 0;
+        let lives = 3;
+        let targetStep = 3;
+        let rangeMin = 1;
+        let rangeMax = 50;
+        let totalTime = 60;
+        let timeLeft = 60;
+        let balls = [];
+
+        let spawnTimer = 0;
+        let timeBallTimer = 0;
+        let timerInterval = null;
+        let isMouseDown = false;
+        let mouseTrail = [];
+        let wasBonusTriggered = false;
+        let timePopupTimeout = null;
+
+        let nonMultipleCount = 0;
+
+        function showStartScreen(title = "🎯 準備好挑戰倍數切球了嗎？", desc = "揮動你的刀刃，切出正確的倍數球與加秒道具！最後 10 秒進入 Bonus Time！", finalScore = null) {
+            isPlaying = false;
+            stopBGM();
+            clearInterval(timerInterval);
+            balls.forEach(b => b.el.remove());
+            balls = [];
+            gameContainer.classList.remove('bonus-mode');
+            bonusBanner.classList.remove('show');
+            timePopupBanner.classList.remove('show');
+            wasBonusTriggered = false;
+            nonMultipleCount = 0;
+            
+            overlayTitle.innerText = title;
+            overlayDesc.innerText = desc;
+            
+            if (finalScore !== null) {
+                overlayExtra.innerHTML = `<div class="final-score-box">${finalScore} 分</div>`;
+            } else {
+                overlayExtra.innerHTML = "";
+            }
+
+            overlayBtn.innerText = finalScore !== null ? "再玩一次" : "開始遊戲";
+            startOverlay.style.display = 'flex';
+        }
+
+        function startGame() {
+            startOverlay.style.display = 'none';
+            balls.forEach(b => b.el.remove());
+            balls = [];
+            score = 0;
+            lives = 3;
+            spawnTimer = 0;
+            timeBallTimer = 0;
+            nonMultipleCount = 0;
+            gameContainer.classList.remove('bonus-mode');
+            bonusBanner.classList.remove('show');
+            timePopupBanner.classList.remove('show');
+            wasBonusTriggered = false;
+            
+            targetStep = parseInt(stepInput.value) || 3;
+            rangeMin = parseInt(minInput.value) || 1;
+            rangeMax = parseInt(maxInput.value) || 50;
+            if (rangeMin >= rangeMax) rangeMax = rangeMin + 10;
+            
+            totalTime = parseInt(timeInput.value) || 60;
+            timeLeft = totalTime;
+
+            updateUI();
+            isPlaying = true;
+            startBGM();
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isPlaying) return;
+                timeLeft--;
+                
+                if (timeLeft <= 10 && timeLeft > 0) {
+                    gameContainer.classList.add('bonus-mode');
+                    
+                    if (!wasBonusTriggered) {
+                        wasBonusTriggered = true;
+                        playSound('bonus');
+                        bonusBanner.classList.add('show');
+                        setTimeout(() => {
+                            bonusBanner.classList.remove('show');
+                        }, 1800);
+                    }
+                } else {
+                    gameContainer.classList.remove('bonus-mode');
+                }
+
+                if (timeLeft <= 5 && timeLeft > 0) {
+                    playSound('countdown');
+                }
+
+                timeText.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    gameOver("時間到！挑戰結束！");
+                }
+            }, 1000);
+        }
+
+        function gameOver(reason) {
+            isPlaying = false;
+            stopBGM();
+            clearInterval(timerInterval);
+            playSound('gameover'); // 播放遊戲結束音效
+            gameContainer.classList.remove('bonus-mode');
+            bonusBanner.classList.remove('show');
+            timePopupBanner.classList.remove('show');
+            showStartScreen(reason, `目標倍數：${targetStep} 的倍數`, score);
+        }
+
+        gameContainer.addEventListener('mousedown', (e) => {
+            if (!isPlaying) return;
+            isMouseDown = true;
+            mouseTrail = [];
+            addPoint(e);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            mouseTrail = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        gameContainer.addEventListener('mousemove', (e) => {
+            if (!isMouseDown || !isPlaying) return;
+            addPoint(e);
+            checkSlice();
+        });
+
+        gameContainer.addEventListener('touchstart', (e) => {
+            if (!isPlaying) return;
+            isMouseDown = true;
+            mouseTrail = [];
+            addPoint(e.touches[0]);
+            e.preventDefault();
+        });
+
+        window.addEventListener('touchend', () => {
+            isMouseDown = false;
+            mouseTrail = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        gameContainer.addEventListener('touchmove', (e) => {
+            if (!isMouseDown || !isPlaying) return;
+            addPoint(e.touches[0]);
+            checkSlice();
+            e.preventDefault();
+        }, { passive: false });
+
+        function addPoint(e) {
+            const rect = gameContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            mouseTrail.push({ x: x, y: y, time: Date.now() });
+            if (mouseTrail.length > 8) mouseTrail.shift();
+        }
+
+        function spawnBall(isTimeBall = false) {
+            if (!isPlaying) return;
+            
+            const isBonus = (timeLeft <= 10 && timeLeft > 0);
+            
+            const el = document.createElement('div');
+            el.className = 'number-ball';
+
+            let ballSize = 85;
+            if (isBonus) {
+                const sizeType = Math.random();
+                if (sizeType < 0.35) {
+                    ballSize = 110; 
+                } else if (sizeType < 0.7) {
+                    ballSize = 60;  
+                } else {
+                    ballSize = 85;  
+                }
+            }
+            el.style.width = ballSize + 'px';
+            el.style.height = ballSize + 'px';
+            el.style.fontSize = (ballSize * 0.38) + 'px';
+            
+            let numVal = 0;
+            if (isTimeBall) {
+                el.classList.add('time-ball');
+                el.innerText = "⏱️";
+            } else {
+                let validMultiples = [];
+                for (let n = rangeMin; n <= rangeMax; n++) {
+                    if (n % targetStep === 0) validMultiples.push(n);
+                }
+
+                if (validMultiples.length === 0) {
+                    numVal = Math.floor(Math.random() * (rangeMax - rangeMin + 1)) + rangeMin;
+                } else {
+                    let forceMultiple = (nonMultipleCount >= 2) || (Math.random() < 0.45);
+
+                    if (forceMultiple) {
+                        const randomIndex = Math.floor(Math.random() * validMultiples.length);
+                        numVal = validMultiples[randomIndex];
+                        nonMultipleCount = 0;
+                    } else {
+                        let attempts = 0;
+                        do {
+                            numVal = Math.floor(Math.random() * (rangeMax - rangeMin + 1)) + rangeMin;
+                            attempts++;
+                        } while (numVal % targetStep === 0 && attempts < 10);
+                        
+                        if (numVal % targetStep === 0) {
+                            nonMultipleCount = 0;
+                        } else {
+                            nonMultipleCount++;
+                        }
+                    }
+                }
+                el.innerText = numVal;
+            }
+            
+            const startX = Math.random() * (gameContainer.clientWidth - 140) + 70;
+            const startY = gameContainer.clientHeight + 50;
+            
+            el.style.left = startX + 'px';
+            el.style.top = startY + 'px';
+            gameContainer.appendChild(el);
+
+            let vySpeed, vxSpeed, gravityVal;
+            if (isTimeBall) {
+                vySpeed = -Math.random() * 1.5 - 6.5; 
+                vxSpeed = (Math.random() - 0.5) * 1.5;
+                gravityVal = 0.12; 
+            } else {
+                vySpeed = isBonus ? (-Math.random() * 4.5 - 14.5) : (-Math.random() * 2.5 - 9.5);
+                vxSpeed = isBonus ? (Math.random() - 0.5) * 4.5 : (Math.random() - 0.5) * 2.5;
+                gravityVal = isBonus ? 0.32 : 0.22;
+            }
+
+            balls.push({
+                isTime: isTimeBall,
+                num: numVal,
+                radius: ballSize / 2,
+                x: startX,
+                y: startY,
+                vx: vxSpeed,
+                vy: vySpeed,
+                gravity: gravityVal,
+                sliced: false,
+                el: el
+            });
+        }
+
+        function checkSlice() {
+            if (mouseTrail.length < 2) return;
+            const p1 = mouseTrail[mouseTrail.length - 2];
+            const p2 = mouseTrail[mouseTrail.length - 1];
+
+            balls.forEach(ball => {
+                if (ball.sliced) return;
+
+                const dist = distToSegment({ x: ball.x, y: ball.y }, p1, p2);
+                if (dist < ball.radius + 10) {
+                    ball.sliced = true;
+
+                    const isBonus = (timeLeft <= 10 && timeLeft > 0);
+
+                    if (ball.isTime) {
+                        ball.el.classList.add('sliced-time');
+                        timeLeft += 3;
+                        playSound('timeball');
+                        showFloatingText("+3 秒 ⏱️", ball.x, ball.y, "#f57f17");
+                        triggerTimePopup();
+                    } else if (ball.num % targetStep === 0) {
+                        ball.el.classList.add('sliced-correct');
+                        playSound('correct');
+                        
+                        let pts = isBonus ? 20 : 10;
+                        score += pts;
+                        
+                        let textMsg = isBonus ? "+20 🔥" : "+10 🎯";
+                        showFloatingText(textMsg, ball.x, ball.y, "#00c853");
+                    } else {
+                        ball.el.classList.add('sliced-wrong');
+                        playSound('wrong');
+                        lives--;
+                        
+                        let deduct = isBonus ? 10 : 5;
+                        score = Math.max(0, score - deduct);
+                        
+                        showFloatingText(`-${deduct} ❌`, ball.x, ball.y, "#d32f2f");
+                        checkLifeZero();
+                    }
+                    updateUI();
+                }
+            });
+        }
+
+        function triggerTimePopup() {
+            timePopupBanner.classList.add('show');
+            if (timePopupTimeout) clearTimeout(timePopupTimeout);
+            timePopupTimeout = setTimeout(() => {
+                timePopupBanner.classList.remove('show');
+            }, 900);
+        }
+
+        function distToSegment(p, p1, p2) {
+            const l2 = (p2.x - p1.x)**2 + (p2.y - p1.y)**2;
+            if (l2 === 0) return Math.hypot(p.x - p1.x, p.y - p1.y);
+            let t = ((p.x - p1.x)*(p2.x - p1.x) + (p.y - p1.y)*(p2.y - p1.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(p.x - (p1.x + t*(p2.x - p1.x)), p.y - (p1.y + t*(p2.y - p1.y)));
+        }
+
+        function showFloatingText(text, x, y, color) {
+            const ft = document.createElement('div');
+            ft.innerText = text;
+            ft.style.position = 'absolute';
+            ft.style.left = x + 'px';
+            ft.style.top = y + 'px';
+            ft.style.color = color;
+            ft.style.fontSize = '24px';
+            ft.style.fontWeight = 'bold';
+            ft.style.zIndex = '100';
+            ft.style.transform = 'translate(-50%, -50%)';
+            ft.style.transition = 'all 0.6s ease-out';
+            gameContainer.appendChild(ft);
+
+            setTimeout(() => {
+                ft.style.top = (y - 45) + 'px';
+                ft.style.opacity = '0';
+            }, 50);
+            setTimeout(() => ft.remove(), 600);
+        }
+
+        function checkLifeZero() {
+            if (lives <= 0) {
+                gameOver("愛心耗盡！遊戲結束！");
+            }
+        }
+
+        function updateUI() {
+            scoreText.innerText = score;
+            timeText.innerText = timeLeft;
+            let hearts = "";
+            for (let i = 0; i < lives; i++) hearts += "❤️";
+            lifeText.innerText = hearts;
+        }
+
+        function gameLoop() {
+            if (isPlaying) {
+                spawnTimer++;
+                timeBallTimer++;
+
+                const isBonus = (timeLeft <= 10 && timeLeft > 0);
+                const spawnInterval = isBonus ? 20 : 55;
+
+                if (spawnTimer % spawnInterval === 0) {
+                    spawnBall(false);
+                }
+
+                if (timeBallTimer >= 360) {
+                    timeBallTimer = 0;
+                    spawnBall(true);
+                }
+
+                for (let i = balls.length - 1; i >= 0; i--) {
+                    let ball = balls[i];
+                    ball.x += ball.vx;
+                    ball.y += ball.vy;
+                    ball.vy += ball.gravity;
+
+                    ball.el.style.left = ball.x + 'px';
+                    ball.el.style.top = ball.y + 'px';
+
+                    if (ball.y > gameContainer.clientHeight + 60) {
+                        ball.el.remove();
+                        balls.splice(i, 1);
+                    }
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (mouseTrail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(mouseTrail[0].x, mouseTrail[0].y);
+                    for (let i = 1; i < mouseTrail.length; i++) {
+                        ctx.lineTo(mouseTrail[i].x, mouseTrail[i].y);
+                    }
+                    ctx.strokeStyle = '#e91e63';
+                    ctx.lineWidth = 7;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+
+</body>
+</html>
